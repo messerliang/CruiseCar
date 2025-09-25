@@ -6,12 +6,13 @@ current overview:
 
 achieved: 
 
-- simple cloud using perlin noise
-- xml file read and construct Vertices
-- building rendering
+- simple cloud using perlin noisel
+- xml file read and construct Vertices;
+- building rendering;
+- read wav file and build a bar whose height changes according to the audio amplitude;
 
 todo lists: 
 
-- volumetric cloud using ray marching
-- text render
-- road and subways render
+- volumetric cloud using ray marching;
+- text render;
+- road and subways render;
