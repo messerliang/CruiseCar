@@ -1,4 +1,4 @@
-#if 0
+#if 1
 
 
 #include <string>
@@ -180,7 +180,22 @@ int main()
     Shader* tesellShader = new Shader("shader/basic/basic.vert", "shader/basic/basic.frag", nullptr, "shader/basic/basic.tcs.glsl", "shader/basic/basic.tes.glsl");
 
 
-
+    // 简单的噪声做云
+    float W = 1000;
+    float H = 30;
+    std::vector<float> cloudQuadVertices = {
+        W, H,  W,
+        W, H, -W,
+        -W, 0, -W,
+        -W, 0, W,
+    };
+    std::vector<unsigned int> cloudQuadIndices = { 0, 1, 2, 0, 2, 3 };
+    VertexBuffer* cloudQuadVbPtr = new VertexBuffer(cloudQuadVertices.data(), cloudQuadVertices.size() * sizeof(sizeof(cloudQuadVertices[0])));
+    cloudQuadVbPtr->Push<float>(3, false);
+    IndexBuffer* cloudIdPtr = new IndexBuffer(cloudQuadIndices.data(), cloudQuadIndices.size());
+    VertexArray* cloudVaPtr = new VertexArray(cloudQuadVbPtr, cloudIdPtr);
+    Shader* cloudShaderPtr = new Shader("shader/simpleCloud/simpleCloud.vert", "shader/simpleCloud/simpleCloud.frag");
+    
 	glm::mat4 Model(1.0f);
 	glm::vec3 MoveDirection = glm::vec3(0.0f, 0.0f, 1.0f);
 	float MoveSpeed = 1;
@@ -193,7 +208,7 @@ int main()
 	//camera.SetPosition(glm::vec3(0, 1.0, 3.0));
     float ScaleH = 1.0f;
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	while (!glfwWindowShouldClose(window)) {
 
@@ -204,13 +219,24 @@ int main()
 		glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
 		glViewport(0, 0, screenWidth, screenHeight);
 		// render here
-		GLCall(glClearColor(0.9f, 0.9f, 0.9f, 1.0f));
+		GLCall(glClearColor(0.19f, 0.19f, 0.19f, 1.0f));
 		GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
 		camera.updateCamera(window);
 
+        // 绘制天空云
+        cloudShaderPtr->Use();
+        cloudShaderPtr->setView(camera, window);
+        cloudShaderPtr->SetUniformMat4(TIModel, "TIModel");
+        cloudShaderPtr->SetUniformV3(LightColor, "LightColor");
+        cloudShaderPtr->SetUniformV4(LightDirPos, "LightDirPos");
+        cloudShaderPtr->SetUniformV3(camera.getPosition(), "ViewPos");
+        cloudShaderPtr->SetUniform1f(currentTime, "currentTime");
+        cloudVaPtr->Bind();
+        cloudIdPtr->Bind();
+        cloudVaPtr->DrawElement(*cloudShaderPtr);
 
-
+        // 绘制基本的线条
 		BarShaderPtr->Use();
 		BarShaderPtr->setView(camera, window);
 		BarShaderPtr->SetUniformMat4(TIModel, "TIModel");
@@ -243,17 +269,17 @@ int main()
         BuildingSideFacesVaPtr->Bind();
         BuildingSideFacesVaPtr->DrawArray(*BuildingShader);
 
-        // 绘制法线
-        NormalShaderPtr->Use();
-        NormalShaderPtr->setView(camera, window);
-        NormalShaderPtr->SetUniformMat4(TIModel, "TIModel");
-        NormalShaderPtr->SetUniform1f(ScaleH, "ScaleH");
-        BuildingSideFacesVaPtr->Bind();
-        BuildingSideFacesVaPtr->DrawArray(*NormalShaderPtr);
+        //// 绘制法线
+        //NormalShaderPtr->Use();
+        //NormalShaderPtr->setView(camera, window);
+        //NormalShaderPtr->SetUniformMat4(TIModel, "TIModel");
+        //NormalShaderPtr->SetUniform1f(ScaleH, "ScaleH");
+        //BuildingSideFacesVaPtr->Bind();
+        //BuildingSideFacesVaPtr->DrawArray(*NormalShaderPtr);
 
-        BuildingVaPtr->Bind();
-        BuildingIbPtr->Bind();
-        BuildingVaPtr->DrawElement(*NormalShaderPtr);
+        //BuildingVaPtr->Bind();
+        //BuildingIbPtr->Bind();
+        //BuildingVaPtr->DrawElement(*NormalShaderPtr);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

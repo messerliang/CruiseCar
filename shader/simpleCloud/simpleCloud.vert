@@ -1,27 +1,22 @@
-#version 330 core
+#version 410 core
 
 layout(location=0) in vec4 aPosition;
-layout(location=1) in vec4 aTexUv;
-
 
 
 
 uniform mat4 model;
-uniform mat4 TIModel;
 uniform mat4 view;
 uniform mat4 projection;
 
 
-out vec3 TexCoord;
+out vec4 QuadPosition;
 
 
 void main(){
 
-	vec4 Pos = aPosition;
-	gl_Position = projection * view * model * (Pos);
+	gl_Position = projection* view * model * aPosition;
+	QuadPosition = model * aPosition;
 
-	TexCoord = aTexUv.xyz;
-	
 }
 //out VS_OUT {
 //    vec3 color;

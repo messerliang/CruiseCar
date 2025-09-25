@@ -1,4 +1,4 @@
-#if 1
+#if 0
 
 
 #include <string>
@@ -10,6 +10,7 @@
 #include <cmath>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <execution>
 
 #include "OsmXmlData.h"
 
@@ -41,12 +42,18 @@ struct ColorRgb
     }
 };
 
-//std::vector<glm::u8vec3> WorleyNoise2D(std::vector<int> Dimension, int CellNumber)
-//{
-//    float xDim = Dimension[0];
-//    float yDim = Dimension[1];
-//
-//}
+void normalize_parallel_stl(std::vector<float>& data) {
+    if (data.empty()) return;
+
+    auto [minIt, maxIt] = std::minmax_element(data.begin(), data.end());
+    float minVal = *minIt;
+    float maxVal = *maxIt;
+    float range = maxVal - minVal;
+    if (range == 0.0f) return;
+
+    std::for_each(std::execution::par_unseq, data.begin(), data.end(),
+        [=](float& x) { x = (x - minVal) / range; });
+}
 
 std::vector<ColorRgb> WorleyNoise3D(std::vector<int>& Dimension, int CellNumber)
 {
@@ -140,15 +147,29 @@ int main()
     std::cout << "way size: " << OsmData.Ways.size() << std::endl;
 
     std::vector<float> Vertices = {
-        -0.5, -0.5, 0, 0, 0,
-         0.5, -0.5, 0, 1, 0,
-         0.5,  0.5, 0, 1, 1,
-        -0.5,  0.5, 0, 0, 1,
+        -0.5, -0.5,  0.5, 0, 0, 0,
+         0.5, -0.5,  0.5, 1, 0, 0,
+         0.5,  0.5,  0.5, 1, 1, 0,
+        -0.5,  0.5,  0.5, 0, 1, 0,
+        -0.5, -0.5, -0.5, 0, 0, 1,
+         0.5, -0.5, -0.5, 1, 0, 1,
+         0.5,  0.5, -0.5, 1, 1, 1,
+        -0.5,  0.5, -0.5, 0, 1, 1,
     };
 
     std::vector<unsigned int> Indices = {
         0, 1, 2,
         0, 2, 3,
+        4, 5, 6,
+        4, 6, 7,
+        1, 5, 6,
+        1, 6, 2,
+        0, 4, 7,
+        0, 7, 3,
+        0, 1, 5,
+        0, 5, 4,
+        3, 2, 6,
+        3, 6, 7,
     };
 
 
@@ -156,7 +177,7 @@ int main()
     // 以线条的方式绘制所有的点
     VertexBuffer* AllVerticesVbPtr = new VertexBuffer(Vertices.data(), Vertices.size() * sizeof(Vertices[0]));
     AllVerticesVbPtr->Push<float>(3, false);
-    AllVerticesVbPtr->Push<float>(2, false);
+    AllVerticesVbPtr->Push<float>(3, false);
 
     //BarVbPtr->Push<float>(2, false);
     IndexBuffer* IbPtr = new IndexBuffer(Indices.data(), Indices.size());
@@ -164,28 +185,6 @@ int main()
     IbPtr->Bind();
     Shader* ShaderPtr = new Shader("shader/volumetricCloud/volumetricCloud.vert", "shader/volumetricCloud/volumetricCloud.frag");
     
-
-    std::vector<int> dimension = { 128, 128, 128 };
-    std::vector<ColorRgb> data = WorleyNoise3D(dimension, 8);
-
-    std::cout << "date 0: " << (int)data[0].Red << " " << (int)data[0].Green << " " << (int)data[0].Blue << std::endl;
-
-    // 生成一个 3D 纹理
-    GLuint tex3DId{ 0 };
-    glGenTextures(1, &tex3DId);
-    glBindTexture(GL_TEXTURE_3D, tex3DId);
-
-    // 环绕方式（XYZ 三个方向）
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
-
-    // 过滤方式
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    // 传数据到 GPU
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB, 128, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE, data.data());
 
 
     glm::mat4 Model(1.0f);
@@ -197,7 +196,11 @@ int main()
     glm::vec4 LightDirPos = glm::normalize(glm::vec4(-0.33, 1.623f, 1.21f, 0.0f));
 
     float lastTime = glfwGetTime();
-
+    glm::vec4 cubePosition = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);  // cube 的位置
+    glm::vec4 cubeLocalX = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);       // 三个 local axis
+    glm::vec4 cubeLocalY = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+    glm::vec4 cubeLocalZ = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
+    glm::mat4 cubePositionAndDir = glm::mat4(cubeLocalX, cubeLocalY, cubeLocalZ, cubePosition); // cube 的中心位置，还有 X、Y、Z 在 摄像机视角下的方向
 
     while (!glfwWindowShouldClose(window)) {
 
@@ -213,14 +216,22 @@ int main()
 
         camera.updateCamera(window);
 
+        glm::mat4 cubePositionAndDirInView = camera.getView() * Model * cubePositionAndDir; // 前3列是 xyz 轴在 view 参考系的值，第4列是
 
+        //std::cout << cubeLocalXInView.x << " " << cubeLocalXInView.y << " " << cubeLocalXInView.z << std::endl;
 
         // 会制 heighway
         ShaderPtr->Use();
         ShaderPtr->setView(camera, window);
         ShaderPtr->SetUniformMat4(TIModel, "TIModel");
         ShaderPtr->SetUniformV3(camera.getPosition(), "ViewPos");
-        ShaderPtr->SetTexture(tex3DId, GL_TEXTURE0, "WorleyNoise", GL_TEXTURE_3D);
+        ShaderPtr->SetUniform1f(currentTime, "currentTime");
+        glm::mat4 projectionInverse = glm::inverse(camera.getProjection(window));
+        ShaderPtr->SetUniformMat4(projectionInverse, "projectionInverse");
+        ShaderPtr->SetUniform1i(screenWidth, "screenWidth");
+        ShaderPtr->SetUniform1i(screenHeight, "screenHeight");
+        ShaderPtr->SetUniformMat4(cubePositionAndDirInView, "cubePositionAndDir");
+        //ShaderPtr->SetTexture(tex3DId, GL_TEXTURE0, "WorleyNoise", GL_TEXTURE_3D);
         VaPtr->Bind();
         IbPtr->Bind();
         VaPtr->DrawElement(*ShaderPtr);

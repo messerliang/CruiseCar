@@ -1,69 +1,20 @@
-#version 330 core
+#version 410 core
 
-in vec3 TexCoord;
+//in vec2 TexCoord;
+//
+//
+//out vec4 FragColor;
+//
+//void main()
+//{
+//	FragColor = vec4(1,1,0, 1);
+//}
+
+uniform float currentTime;
 
 out vec4 FragColor;
 
-uniform float currentTime;
-uniform mat4 projectionInverse;
-
-uniform mat4 cubePositionAndDir;
-
-uniform int screenWidth;
-uniform int screenHeight;
-
-
-
-// 将 3d 整数坐标映射为伪随机 vec3，用于 feature points 的生成 —— 各个网格点的随机数
-vec3 hash3(vec3 p)
-{
-	p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
-	p *= 17.0;
-    return fract(p.x * p.y * p.z * (p + vec3(1.0, 2.0, 3.0)));
-}
-
-// 3D WorleyNoise，计算 3d worley noise 在 p 位置的取值
-float worleyNoise3(vec3 p)
-{
-	vec3 cell = floor(p);	// 所在的 cell 网格
-	float minDist = 1e9;
-	// 遍历相邻的 cell
-	for(int x=-1; x <= 1; ++x)
-	{
-		for(int y=-1; y <= 1; ++y)
-		{
-			for(int z=-1; z <= 1; ++z)
-			{
-				vec3 neighbor = cell + vec3(x, y, z); // 相邻点的真正位置
-				vec3 fp = hash3(neighbor);
-				// feature point 的世界坐标
-				vec3 featurePos = neighbor + fp;
-
-				// 距离
-				float dist = length(featurePos - p);
-				minDist = min(minDist, dist);
-			}
-		}
-	}
-    float maxDist = 0.8660254;
-    return clamp(minDist / maxDist, 0.0, 1.0);
-	//return minDist;
-}
-
-// // --- FBM (fractal sum) convenience wrapper
-float fbmWorley3(vec3 p, int octaves, float lacunarity, float gain) {
-    float amp = 1.0;
-    float freq = 1.0;
-    float sum = 0.0;
-    float maxAmp = 0.0;
-    for (int i = 0; i < octaves; ++i) {
-        sum += amp * worleyNoise3(p * freq);
-        maxAmp += amp;
-        amp *= gain;
-        freq *= lacunarity;
-    }
-    return sum / maxAmp; // normalized to [-1,1]
-}
+in vec4 QuadPosition;
 
 // 3d perlin noise
 
@@ -143,30 +94,15 @@ float fbmPerlin3(vec3 p, int octaves, float lacunarity, float gain) {
 }
 
 
+
 void main(){
-
-	//vec4 color = texture(WorleyNoise, TexCoord);
-	//FragColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
-
-	vec3 pos = vec3(TexCoord.x + currentTime*0.0, TexCoord.y, TexCoord.z);
-	//float r = worleyNoise(pos * 8);
-	float r = fbmPerlin3(pos * 8, 6, 2, 0.5);
-	//float r = fbmWorley3(pos * 2, 4, 2, 0.5);
-
-    vec2 resolution = vec2(screenWidth, screenHeight);
-    vec2 ndc = (gl_FragCoord.xy / resolution) * 2  - 1.0f;
-    vec4 clip = vec4(ndc, -1.0f, 1.0);      // [-1,1]的cube 空间里面， z= -1 就对应摄像机的近平面了
-
-    // 在摄像机的视角下，使用逆投影恢复原来的坐标
-    vec4 eye = projectionInverse * clip;
-
-    // 以为此时是以摄像机为原点了，所以 eye ，也就是近平面上的点的位置，归一化后就可以作为 ray marching 的方向了
-    vec3 rayDir = normalize(eye.xyz);
-
-    vec3 rayOrigin = vec3(0);
-
-    //float r = perlin3(pos*8) + worleyNoise3(pos * 8);
-
-	FragColor = vec4(rayDir,1.0f);
+	//float h = (fbmPerlin3(0.1 * QuadPosition.xyz, 4, 2, 0.5) + 1) / 2.0f;
+    vec3 pos = 0.1 * QuadPosition.xyz + vec3(0,0,currentTime);
+	float h = (perlin3(pos) + 1.3) / 2.0f;
+    vec3 skyBlue = vec3(0.698, 0.875, 1.0);
+    vec3 cloudWhite = vec3(1);
+    vec3 color = mix(skyBlue, cloudWhite, h);
+	FragColor = vec4(color, 1.0f);
+	
 }
 
