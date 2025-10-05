@@ -140,6 +140,7 @@
     <ClCompile Include="src\GL_Error.cpp" />
     <ClCompile Include="src\IndexBuffer.cpp" />
     <ClCompile Include="src\Shader.cpp" />
+    <ClCompile Include="src\SimplexNoise.cpp" />
     <ClCompile Include="src\Texture.cpp" />
     <ClCompile Include="src\tinyxml2.cpp" />
     <ClCompile Include="src\VertexArray.cpp" />
@@ -159,6 +160,7 @@
     <ClInclude Include="include\GL_Error.h" />
     <ClInclude Include="include\IndexBuffer.h" />
     <ClInclude Include="include\Shader.h" />
+    <ClInclude Include="include\SimplexNoise.h" />
     <ClInclude Include="include\Texture.h" />
     <ClInclude Include="include\tinyxml2.h" />
     <ClInclude Include="include\VertexArray.h" />

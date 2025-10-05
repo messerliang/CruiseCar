@@ -2,6 +2,7 @@
 
 layout(location=0) in vec4 aPosition;
 layout(location=1) in vec4 aTexUv;
+layout(location=2) in vec4 aNormal;
 
 
 
@@ -14,21 +15,16 @@ uniform mat4 projection;
 
 out vec3 TexCoord;
 
+out vec3 pixelPosition;
+out vec3 pixelNormal;
 
 void main(){
 
 	vec4 Pos = aPosition;
-	gl_Position = projection * view * model * (Pos);
+	gl_Position = projection * view * model * aPosition;
 
 	TexCoord = aTexUv.xyz;
 	
+	pixelPosition = vec3(model * aPosition);
+	pixelNormal = normalize(vec3(TIModel*aNormal));
 }
-//out VS_OUT {
-//    vec3 color;
-//} vs_out;
-//
-//void main()
-//{
-//    gl_Position = projection * view * model * position;
-//    vs_out.color = vec3(1.0f, 0.7f, 0.34f);
-//}
