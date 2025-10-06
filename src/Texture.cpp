@@ -16,13 +16,6 @@ Texture::Texture(const std::string& imgPath,  int flip): m_textureId(-1){
     // ¶ÁÈ¡Í¼Æ¬
     if (0 != ReadImage(flip)) {
 
-        //int len = MultiByteToWideChar(CP_UTF8, 0, imgPath.c_str(), -1, NULL, 0);
-        //std::wstring ws(len, L'\0');
-        //MultiByteToWideChar(CP_UTF8, 0, imgPath.c_str(), -1, &ws[0], len);
-
-        //// ÒÆ³ýÄ©Î²µÄ null terminator
-        //ws.resize(wcslen(ws.c_str()));
-        //std::wcout << ws << " read failed\n";
         std::cout << utf8_to_ansi(imgPath) << "read failed\n"; 
         m_textureId = -1;
         return;
